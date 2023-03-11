@@ -14,7 +14,7 @@
   },
   "SavePath": "这里填写生成的文件保存路径"
 }
-
+```
 ### 例:
 ```javascript
 {
@@ -23,3 +23,4 @@
   },
   "SavePath": "/Project/adb/Database.cs"
 }
+```
