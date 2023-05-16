@@ -9,18 +9,20 @@ namespace GenerateCharp
 {
 	public class GenerateCode
 	{
-		public GenerateCode(string connectString)
+        private string className;
+		public GenerateCode(string connectString,string className)
 		{
             this._connStr = connectString;
+            this.className = className;
             StringBuilder.Append(@$"
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace adb
 {{
-    public class MyDbContext : DbContext
+    public class {className} : DbContext
     {{
-        public MyDbContext(DbContextOptions<MyDbContext> options) : base(options){{}}
+        public {className}(DbContextOptions<{className}> options) : base(options){{}}
 
 {this.CreateDbContext()}
         
@@ -55,10 +57,9 @@ namespace adb
                 text.AppendLine($@"    /// {item.Value}");
                 text.AppendLine(@"    /// </summary>");
                 var clsName = $"    public class {item.Key}";
-                if (fileds.Any(x => x.FieldName == "enable"))
+                if (fileds.Any(x => x.FieldName == "enable") && ChangeToCSharpType(fileds.First(x=>x.FieldName == "enable").FieldType, fileds.First(x => x.FieldName == "enable").isNull).Contains("Int32"))
                     clsName += $" : tTable ";
-                if (fileds.Any(x => x.FieldName == "addTime"))
-
+                if (fileds.Any(x => x.FieldName == "addTime") && fileds.First(x => x.FieldName == "addTime").isNull == false)
                     clsName += $" {(clsName.IndexOf(":") == -1 ? ":" : ",")} IAddTime ";
                 clsName += " {";
                 text.AppendLine(clsName);
@@ -86,7 +87,7 @@ namespace adb
                         text.AppendLine($@"       /// {field.Describe}");
                     }
                     text.AppendLine(@"        /// </summary>");
-                    if (field.FieldName == "enable")
+                    if (field.FieldName == "enable" && ChangeToCSharpType(field.FieldType,field.isNull).Contains("Int32"))
                         text.AppendLine($@"       public override {ChangeToCSharpType(field.FieldType, field.isNull)} {field.FieldName} {{get;set;}} = {getDefaultValue(field.FieldType, field.DefaultValue, field.isNull)};");
                     else
                     {
@@ -125,6 +126,10 @@ namespace adb
                 text.AppendLine($"    {{");
                 text.AppendLine($@"        public void Configure(EntityTypeBuilder<{item.Key}> builder)");
                 text.AppendLine($@"        {{");
+
+
+                var fileds = GetFields(item.Key);
+
                 if (item.Key.StartsWith("v"))
                 {
                     text.AppendLine($@"            builder.HasNoKey();");
@@ -133,16 +138,15 @@ namespace adb
                 else
                 {
                     text.AppendLine($@"            builder.ToTable(""{item.Key}"", ""dbo"");");
+                    if (fileds.Where(x => x.isKey == true).Count() > 0)
+                        text.AppendLine($@"            builder.HasKey(x => new {{{string.Join(",", fileds.Where(x => x.isKey == true).Select(x => $"x.{x.FieldName}"))}}});");
+
                 }
 
-                var fileds = GetFields(item.Key);
+
                 foreach (var field in fileds)
                 {
-                    if (field.isKey)
-                    {
-                        text.AppendLine($@"            builder.HasKey(x => x.{field.FieldName});");
-                    }
-                    text.AppendLine($@"            builder.Property(x => x.{field.FieldName}).HasColumnName(""{field.FieldName}"").HasColumnType(""{field.FieldType}""){(field.isNull ? ".IsRequired(false)" : ".IsRequired(true)")}{(field.isKey ? ".ValueGeneratedOnAdd().UseIdentityColumn()" : "")}{(!string.IsNullOrWhiteSpace(field.DefaultValue) ? $".HasDefaultValue({getDefaultValue(field.FieldType, field.DefaultValue, field.isNull)})" : "")};");
+                    text.AppendLine($@"            builder.Property(x => x.{field.FieldName}).HasColumnName(""{field.FieldName}"").HasColumnType(""{field.FieldType}""){(field.isNull ? ".IsRequired(false)" : ".IsRequired(true)")}{(field.isKey && field.AoutKey? ".ValueGeneratedOnAdd().UseIdentityColumn()" : "")}{(!string.IsNullOrWhiteSpace(field.DefaultValue) ? $".HasDefaultValue({getDefaultValue(field.FieldType, field.DefaultValue, field.isNull)})" : "")};");
                 }
                 text.AppendLine($@"        }}");
                 text.AppendLine($"    }}");
@@ -188,13 +192,18 @@ namespace adb
                         }
                         else
                         {
-                            classList.Add(rs.GetString(1), rs[2].ToString());
+                            var files = this.GetFields(rs.GetString(1));
+                            if (files.Any(x => x.isKey == true))
+                            {
+                                classList.Add(rs.GetString(1), rs[2].ToString());
+                            }
                         }
                     }
 
                 }
                 rs.Close();
             }
+            
             return classList;
         }
 
