@@ -18,7 +18,8 @@ namespace GenerateCharp
             string connectionString = configuration.GetConnectionString("DefaultConnection");
             string path = configuration[@"SavePath"];
             GenerateCode t = new GenerateCode(connectionString);
-            t.Save(path);
+            string p = Path.Combine(AppContext.BaseDirectory, "..\\", "..\\", "..\\","..\\", path);
+            t.Save(p);
         }
     }
 }
