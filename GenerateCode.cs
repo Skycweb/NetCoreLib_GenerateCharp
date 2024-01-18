@@ -533,18 +533,18 @@ WHERE ([type] = 'P' OR [type] = 'X' OR [type] = 'PC') AND [is_ms_shipped] = 0 OR
                 case "decimal":
                     if (string.IsNullOrWhiteSpace(s))
                     {
-                        reval = isNull ? "null" : "0";
+                        reval = isNull ? "null" : "(decimal)0";
                     }
                     else
                     {
                         try
                         {
                             var a = Convert.ToDecimal(_repalce(s));
-                            s = a.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            s = "(decimal)" + a.ToString(System.Globalization.CultureInfo.InvariantCulture);
                         }
                         catch
                         {
-                            s = "0";
+                            s = "(decimal)0";
                         }
                         reval = s;
                     }
