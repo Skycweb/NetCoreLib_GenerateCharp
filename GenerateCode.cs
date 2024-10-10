@@ -9,23 +9,29 @@ namespace GenerateCharp
 {
 	public class GenerateCode
 	{
-        private string className;
 		public GenerateCode(string connectString,string className)
 		{
             this._connStr = connectString;
-            this.className = className;
             StringBuilder.Append(@$"
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace adb
 {{
+    /// <summary>
+    /// 
+    /// </summary>
     public class {className} : DbContext
     {{
+        /// <summary>
+        /// 
+        /// </summary>
         public {className}(DbContextOptions<{className}> options) : base(options){{}}
 
 {this.CreateDbContext()}
-        
+        /// <summary>
+        /// 
+        /// </summary>
         protected override void OnModelCreating(ModelBuilder modelBuilder){{
             base.OnModelCreating(modelBuilder);
 {this.CreateDbContext_Configuration()}
@@ -43,13 +49,13 @@ namespace adb
             file.Write(data,0,data.Length);
             file.Dispose();
         }
-        private string _connStr = "";
-        private Dictionary<string, TableFieldClass> tableAllFileds = new Dictionary<string, TableFieldClass>();
-        private StringBuilder StringBuilder = new StringBuilder();
+        private readonly string _connStr = "";
+        private readonly Dictionary<string, TableFieldClass> tableAllFileds = new();
+        private readonly StringBuilder StringBuilder = new();
         public StringBuilder CreateTableClass()
         {
             var cls = GetClass();
-            StringBuilder text = new StringBuilder();
+            StringBuilder text = new();
             foreach (var item in cls)
             {
                 var fileds = GetFields(item.Key);
@@ -60,7 +66,7 @@ namespace adb
                 if (fileds.Any(x => x.FieldName == "enable") && ChangeToCSharpType(fileds.First(x=>x.FieldName == "enable").FieldType, fileds.First(x => x.FieldName == "enable").isNull).Contains("Int32"))
                     clsName += $" : tTable ";
                 if (fileds.Any(x => x.FieldName == "addTime") && fileds.First(x => x.FieldName == "addTime").isNull == false)
-                    clsName += $" {(clsName.IndexOf(":") == -1 ? ":" : ",")} IAddTime ";
+                    clsName += $" {(!clsName.Contains(':', StringComparison.CurrentCulture) ? ":" : ",")} IAddTime ";
                 clsName += " {";
                 text.AppendLine(clsName);
 
@@ -101,7 +107,7 @@ namespace adb
 
         public StringBuilder CreateDbContext()
         {
-            StringBuilder text = new StringBuilder();
+            StringBuilder text = new();
             var cls = GetClass();
             foreach (var item in cls)
             {
@@ -115,7 +121,7 @@ namespace adb
 
         public StringBuilder CreateTableConfiguration()
         {
-            StringBuilder text = new StringBuilder();
+            StringBuilder text = new();
             var cls = GetClass();
             foreach (var item in cls)
             {
@@ -124,6 +130,9 @@ namespace adb
                 text.AppendLine(@"    /// </summary>");
                 text.AppendLine($"    public class {item.Key}Configuration : IEntityTypeConfiguration<{item.Key}>");
                 text.AppendLine($"    {{");
+                text.AppendLine(@"          /// <summary>");
+                text.AppendLine($@"         /// 配置,{item.Value}");
+                text.AppendLine(@"          /// </summary>");
                 text.AppendLine($@"        public void Configure(EntityTypeBuilder<{item.Key}> builder)");
                 text.AppendLine($@"        {{");
 
@@ -138,7 +147,7 @@ namespace adb
                 else
                 {
                     text.AppendLine($@"            builder.ToTable(""{item.Key}"", ""dbo"");");
-                    if (fileds.Where(x => x.isKey == true).Count() > 0)
+                    if (fileds.Where(x => x.isKey == true).Any())
                         text.AppendLine($@"            builder.HasKey(x => new {{{string.Join(",", fileds.Where(x => x.isKey == true).Select(x => $"x.{x.FieldName}"))}}});");
 
                 }
@@ -157,7 +166,7 @@ namespace adb
 
         public StringBuilder CreateDbContext_Configuration()
         {
-            StringBuilder text = new StringBuilder();
+            StringBuilder text = new();
             var cls = GetClass();
             foreach (var item in cls)
             {
@@ -312,7 +321,7 @@ WHERE ([type] = 'P' OR [type] = 'X' OR [type] = 'PC') AND [is_ms_shipped] = 0 OR
                     {
                         InputOrOutputS = rs["参数传输类型"].ToString()
                                                      ,
-                        FieldName = rs["参数名称"].ToString().Substring(1)
+                        FieldName = rs["参数名称"].ToString()[1..]
                                                      ,
                         FieldType = rs["类型"].ToString(),
                         Size = Convert.ToInt32(rs["长度"])
@@ -326,101 +335,44 @@ WHERE ([type] = 'P' OR [type] = 'X' OR [type] = 'PC') AND [is_ms_shipped] = 0 OR
 
         public static string ChangeToCSharpType(string type, bool t)
         {
-            string reval;
             string isNull = t ? "?" : "";
-            switch (type.ToLower())
+            string reval = type.ToLower() switch
             {
-                case "int":
-                    reval = "Int32" + isNull;
-                    break;
-                case "text":
-                    reval = "string";
-                    break;
-                case "bigint":
-                    reval = "Int64" + isNull;
-                    break;
-                case "binary":
-                    reval = "byte[]";
-                    break;
-                case "bit":
-                    reval = "bool" + isNull;
-                    break;
-                case "char":
-                    reval = "string";
-                    break;
-                case "datetime":
-                    reval = "DateTime" + isNull;
-                    break;
-                case "date":
-                    reval = "DateTime" + isNull;
-                    break;
-                case "time":
-                    reval = "TimeSpan" + isNull;
-                    break;
-                case "decimal":
-                    reval = "decimal" + isNull;
-                    break;
-                case "float":
-                    reval = "double" + isNull;
-                    break;
-                case "image":
-                    reval = "byte[]";
-                    break;
-                case "money":
-                    reval = "decimal" + isNull;
-                    break;
-                case "nchar":
-                    reval = "string";
-                    break;
-                case "ntext":
-                    reval = "string";
-                    break;
-                case "numeric":
-                    reval = "decimal" + isNull;
-                    break;
-                case "nvarchar":
-                    reval = "string";
-                    break;
-                case "real":
-                    reval = "Single" + isNull;
-                    break;
-                case "smalldatetime":
-                    reval = "DateTime" + isNull;
-                    break;
-                case "smallint":
-                    reval = "Int16" + isNull;
-                    break;
-                case "smallmoney":
-                    reval = "decimal" + isNull;
-                    break;
-                case "timestamp":
-                    reval = "DateTime" + isNull;
-                    break;
-                case "tinyint":
-                    reval = "byte";
-                    break;
-                case "uniqueidentifier":
-                    reval = "Guid" + isNull;
-                    break;
-                case "varbinary":
-                    reval = "byte[]";
-                    break;
-                case "varchar":
-                    reval = "string";
-                    break;
-                case "Variant":
-                    reval = "Object";
-                    break;
-                default:
-                    reval = "string";
-                    break;
-            }
+                "int" => "Int32" + isNull,
+                "text" => "string",
+                "bigint" => "Int64" + isNull,
+                "binary" => "byte[]",
+                "bit" => "bool" + isNull,
+                "char" => "string",
+                "datetime" => "DateTime" + isNull,
+                "date" => "DateTime" + isNull,
+                "time" => "TimeSpan" + isNull,
+                "decimal" => "decimal" + isNull,
+                "float" => "double" + isNull,
+                "image" => "byte[]",
+                "money" => "decimal" + isNull,
+                "nchar" => "string",
+                "ntext" => "string",
+                "numeric" => "decimal" + isNull,
+                "nvarchar" => "string",
+                "real" => "Single" + isNull,
+                "smalldatetime" => "DateTime" + isNull,
+                "smallint" => "Int16" + isNull,
+                "smallmoney" => "decimal" + isNull,
+                "timestamp" => "DateTime" + isNull,
+                "tinyint" => "byte",
+                "uniqueidentifier" => "Guid" + isNull,
+                "varbinary" => "byte[]",
+                "varchar" => "string",
+                "Variant" => "Object",
+                _ => "string",
+            };
             return reval;
         }
 
         public static string _repalce(string s)
         {
-            return s = s.Replace("(", "").Replace(")", "");
+            return s.Replace("(", "").Replace(")", "");
             //switch (s.Substring(0, 2))
             //{
             //    case "(":
@@ -489,18 +441,12 @@ WHERE ([type] = 'P' OR [type] = 'X' OR [type] = 'PC') AND [is_ms_shipped] = 0 OR
                     else
                     {
                         var bstr = _repalce(s);
-                        switch (bstr)
+                        bstr = bstr switch
                         {
-                            case "0":
-                                bstr = "false";
-                                break;
-                            case "1":
-                                bstr = "true";
-                                break;
-                            default:
-                                bstr = s;
-                                break;
-                        }
+                            "0" => "false",
+                            "1" => "true",
+                            _ => s,
+                        };
                         reval = "Convert.ToBoolean(\"" + bstr + "\")";
                     }
                     break;
@@ -533,18 +479,18 @@ WHERE ([type] = 'P' OR [type] = 'X' OR [type] = 'PC') AND [is_ms_shipped] = 0 OR
                 case "decimal":
                     if (string.IsNullOrWhiteSpace(s))
                     {
-                        reval = isNull ? "null" : "0";
+                        reval = isNull ? "null" : "(decimal)0";
                     }
                     else
                     {
                         try
                         {
                             var a = Convert.ToDecimal(_repalce(s));
-                            s = a.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                            s = "(decimal)" + a.ToString(System.Globalization.CultureInfo.InvariantCulture);
                         }
                         catch
                         {
-                            s = "0";
+                            s = "(decimal)0";
                         }
                         reval = s;
                     }
@@ -745,91 +691,36 @@ WHERE ([type] = 'P' OR [type] = 'X' OR [type] = 'PC') AND [is_ms_shipped] = 0 OR
 
         public static string ChangeToCSharpType(string type)
         {
-            string reval;
-            switch (type.ToLower())
+            string reval = type.ToLower() switch
             {
-                case "int":
-                    reval = "Int32";
-                    break;
-                case "text":
-                    reval = "String";
-                    break;
-                case "bigint":
-                    reval = "Int64";
-                    break;
-                case "binary":
-                    reval = "System.Byte[]";
-                    break;
-                case "bit":
-                    reval = "Boolean";
-                    break;
-                case "char":
-                    reval = "String";
-                    break;
-                case "datetime":
-                    reval = "System.DateTime";
-                    break;
-                case "time":
-                    reval = "System.TimeSpan";
-                    break;
-                case "decimal":
-                    reval = "System.Decimal";
-                    break;
-                case "float":
-                    reval = "System.Double";
-                    break;
-                case "image":
-                    reval = "System.Byte[]";
-                    break;
-                case "money":
-                    reval = "System.Decimal";
-                    break;
-                case "nchar":
-                    reval = "String";
-                    break;
-                case "ntext":
-                    reval = "String";
-                    break;
-                case "numeric":
-                    reval = "System.Decimal";
-                    break;
-                case "nvarchar":
-                    reval = "String";
-                    break;
-                case "real":
-                    reval = "System.Single";
-                    break;
-                case "smalldatetime":
-                    reval = "System.DateTime";
-                    break;
-                case "smallint":
-                    reval = "Int16";
-                    break;
-                case "smallmoney":
-                    reval = "System.Decimal";
-                    break;
-                case "timestamp":
-                    reval = "System.DateTime";
-                    break;
-                case "tinyint":
-                    reval = "System.Byte";
-                    break;
-                case "uniqueidentifier":
-                    reval = "System.Guid";
-                    break;
-                case "varbinary":
-                    reval = "System.Byte[]";
-                    break;
-                case "varchar":
-                    reval = "String";
-                    break;
-                case "Variant":
-                    reval = "Object";
-                    break;
-                default:
-                    reval = "String";
-                    break;
-            }
+                "int" => "Int32",
+                "text" => "String",
+                "bigint" => "Int64",
+                "binary" => "System.Byte[]",
+                "bit" => "Boolean",
+                "char" => "String",
+                "datetime" => "System.DateTime",
+                "time" => "System.TimeSpan",
+                "decimal" => "System.Decimal",
+                "float" => "System.Double",
+                "image" => "System.Byte[]",
+                "money" => "System.Decimal",
+                "nchar" => "String",
+                "ntext" => "String",
+                "numeric" => "System.Decimal",
+                "nvarchar" => "String",
+                "real" => "System.Single",
+                "smalldatetime" => "System.DateTime",
+                "smallint" => "Int16",
+                "smallmoney" => "System.Decimal",
+                "timestamp" => "System.DateTime",
+                "tinyint" => "System.Byte",
+                "uniqueidentifier" => "System.Guid",
+                "varbinary" => "System.Byte[]",
+                "varchar" => "String",
+                "Variant" => "Object",
+                _ => "String",
+            };
             return reval;
         }
     }
